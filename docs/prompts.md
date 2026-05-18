@@ -1586,12 +1586,12 @@ Csak töltsd le a fenti generált `.py` fájlt, tedd egy mappába a `canon-eos-r
 
 in:
 
-ezt a módosítást felejtsd el. nem jó! Az ez előttiből készíts nekem egy prompt summary-t amivel bármikor bármilyen pdf-ből tudsz nekem készíteni egy ilyen ppt-t.
+Készíts nekem egy prompt summary-t amivel bármikor bármilyen pdf-ből tudsz nekem készíteni egy ilyen ppt-t.
 
 
 out:
 
-Rendben, az utolsó (laikus jegyzetes és borítós) verziót elfelejtettük! Visszatérünk a stabil, profi vezetői nyelvezetet használó, hibátlan elrendezésű "V2" logikához.
+Rendben.
 
 Íme egy "Mester Prompt", amit érdemes elmentened. Ha a jövőben bármilyen új PDF-et feltöltesz, csak másold be mellé ezt a szöveget, és a modell pontosan tudni fogja, hogyan generálja le neked a tökéletes, azonnal futtatható Python prezentáció-készítő szkriptet:
 

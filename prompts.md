@@ -1585,6 +1585,627 @@ Csak töltsd le a fenti generált `.py` fájlt, tedd egy mappába a `canon-eos-r
 ##############################
 
 
+in: 
+
+Akkor finomítsuk. Kell egy borító oldal, pl a pdf elejéről az a fekete kép a kameráról. Akkor a következő változtatás, hogy az előadói jegyzetet, kicsit bővebbre kéne venni, hogy egy teljesen laikus is aki sosem hallott még erről a témáról ő is tudjon prezentálni. De a diákon lévő szövegekhez ne nyúlj.
+
+
+out:
+
+
+```python
+script_content = """import fitz  # PyMuPDF
+import os
+from pptx import Presentation
+from pptx.util import Pt, Inches
+from pptx.enum.text import MSO_AUTO_SIZE, PP_ALIGN
+from pptx.dml.color import RGBColor
+
+def extract_specific_images(pdf_path):
+    print(f"Képek kinyerése a {pdf_path} fájlból...")
+    if not os.path.exists(pdf_path):
+        raise FileNotFoundError(f"Nem található a fájl: {pdf_path}")
+
+    doc = fitz.open(pdf_path)
+    
+    # Oldalak hozzárendelése a diákhoz (0 = Borító, 1-10 = Tartalom)
+    slide_to_page_map = {
+        0: 1,   # Cover: fekete kamera kép (Page 1)
+        1: 5,   # Slide 1: Global production communities
+        2: 4,   # Slide 2: Giant pile of EF lenses
+        3: 10,  # Slide 3: EF vs RF mount comparison
+        4: 12,  # Slide 4: Aberration ray bundle
+        5: 14,  # Slide 5: Control Ring layout
+        6: 16,  # Slide 6: RF28-70mm F2 lens
+        7: 24,  # Slide 7: RF24-105mm F4 lens
+        8: 34,  # Slide 8: EF-EOS R Drop-in Filter
+        9: 35,  # Slide 9: 5-axis Image Stabilization
+        10: 41  # Slide 10: Flange back distance comparison
+    }
+    
+    slide_images = {}
+    
+    for slide_idx, page_num in slide_to_page_map.items():
+        if page_num <= len(doc):
+            page = doc[page_num - 1] # 0-indexed
+            image_list = page.get_images(full=True)
+            
+            if image_list:
+                xref = image_list[0][0]
+                base_image = doc.extract_image(xref)
+                image_bytes = base_image["image"]
+                image_ext = base_image["ext"]
+                
+                img_filename = f"slide_{slide_idx}_page_{page_num}.{image_ext}"
+                with open(img_filename, "wb") as f:
+                    f.write(image_bytes)
+                
+                slide_images[slide_idx] = img_filename
+                print(f"Dia {slide_idx}: Kép kinyerve a(z) {page_num}. oldalról.")
+            else:
+                print(f"Dia {slide_idx}: Nem található kép a(z) {page_num}. oldalon.")
+        else:
+            print(f"Dia {slide_idx}: Az oldalszám ({page_num}) meghaladja a PDF hosszát.")
+            
+    return slide_images
+
+def create_presentation():
+    pdf_filename = "canon-eos-r-white-paper.pdf"
+    slide_images = extract_specific_images(pdf_filename)
+
+    # 1. Borítókép és tartalom adatszerkezete
+    slides_data = [
+        {
+            # BORÍTÓ (Slide 0)
+            "is_cover": True,
+            "title": "A Canon EOS R Rendszer",
+            "subtitle": "Új Korszak a Képalkotásban - Vezetői Összefoglaló",
+            "notes": "Jó napot kívánok, hölgyeim és uraim! Szeretettel köszöntöm Önöket. A mai előadásunk témája a Canon egyik legnagyobb technológiai mérföldköve, az EOS R rendszer. Ne ijedjen meg senki a technikai szavaktól, a prezentáció során igyekszem mindent közérthetően elmagyarázni, hogy tisztán lássuk: miért volt szükség erre a hatalmas ugrásra, és mit jelent ez a jövőnk, valamint a mindennapi felhasználók számára. Kezdjünk is bele!"
+        },
+        {
+            "is_cover": False,
+            "title": "A Canon EOS R Rendszer: Új Korszak",
+            "bullets": [
+                "Célkitűzés: Az optikai teljesítmény és a kreatív működési rugalmasság maximalizálása a globális piacon.",
+                "Fókuszterület: Új generációs, full-frame tükör nélküli (mirrorless) technológia bevezetése.",
+                "A Rendszer Lényege: Teljesen új tervezésű, innovatív RF bajonett (lens mount) architektúra.",
+                "Kompatibilitás: A meglévő EF és EF-S lencsék teljes körű támogatásának integrálása."
+            ],
+            "notes": "Képzeljék el ezt az új rendszert úgy, mint egy teljesen új alapozást egy felhőkarcolóhoz. Ahhoz, hogy egyre szebb, részletesebb és élethűbb képeket kapjunk, a Canonnak a nulláról kellett újraterveznie azt a csatlakozási pontot, ahol a lencse találkozik a fényképezőgéppel. Ezt a csatlakozást hívjuk RF bajonettnek. Ez a technológia egyaránt szól a profi fotósoknak és videósoknak, miközben az is nagyon fontos szempont volt, hogy ha valakinek már vannak régi Canon lencséik otthon, azokat ne kelljen kidobniuk, hanem tovább tudják használni."
+        },
+        {
+            "is_cover": False,
+            "title": "A Harmincéves EF Rendszer Korlátai",
+            "bullets": [
+                "Fizikai gátak: A hagyományos EF bajonett (54 mm átmérő, 44 mm távolság) elérte a rugalmasság határait.",
+                "Adatátviteli sebesség: A 8-tűs (pin) elektronikus kapcsolat sávszélessége mára már korlátozó tényező.",
+                "Fejlesztési limitációk: Kevés az elektronikus csatorna az összetett operációs funkciókhoz.",
+                "Fókusz korlátok: Szűkös lehetőségek a modern, szenzor-alapú autofókusz (AF) rendszerekben."
+            ],
+            "notes": "Felmerülhet a kérdés: ha eddig minden működött, miért kellett váltani? A Canon korábbi, úgynevezett EF rendszere 30 éven át szolgált minket. Gondoljanak csak bele, 30 évvel ezelőtt hol tartottak a számítógépek vagy a telefonok! Bár zseniális rendszer volt, a belső adatátviteli sebessége mára kevés lett. Olyan ez, mintha egy szűk csövön akarnánk egyre több és több vizet átnyomni. A mai modern, szupergyors élességállítás és a hatalmas felbontású videók miatt szükség volt egy sokkal szélesebb, gyorsabb 'csőre' a gép és az objektív közötti kommunikációhoz."
+        },
+        {
+            "is_cover": False,
+            "title": "Az RF Bajonett Innovációja",
+            "bullets": [
+                "Belső átmérő megőrzése: Az 54 mm-es átmérő megtartása az optimális fényáteresztés érdekében.",
+                "Rövidített bázistávolság: A szenzor és a bajonett távolsága 44 mm-ről mindössze 20 mm-re csökkent.",
+                "Növelt sávszélesség: A csatlakozók számának 8-ról 12-re történő emelése biztosítja a nagysebességű kommunikációt.",
+                "Tervezési szabadság: Nagy átmérőjű hátsó lencsetagok helyezhetők közvetlenül a full-frame szenzor elé."
+            ],
+            "notes": "És itt jön a képbe a mérnöki csoda. Az új csatlakozási pont szélessége maradt a régi (54 milliméter), hogy rengeteg fény jusson be a gépbe, de a lencse és a képérzékelő közötti távolságot a felére, mindössze 20 milliméterre csökkentették. Ráadásul a kommunikációs 'aranytűk' számát 8-ról 12-re növelték. Ez pontosan olyan, mintha egy kétsávos autóutat egy modern hatsávos autópályává bővítenénk: a kamera és a lencse most már döbbenetes sebességgel, valós időben tud 'beszélgetni' egymással. A közelebbi elhelyezés pedig a lencsetervezőknek is eddig sosem látott szabadságot adott."
+        },
+        {
+            "is_cover": False,
+            "title": "Optikai Aberrációk Kezelése",
+            "bullets": [
+                "Fénytörési kihívások: A fénytörés fokozásával drasztikusan nőnek a kromatikus és monokromatikus képhibák.",
+                "Optikai megoldás: A nagy hátsó lencsék 'kíméletesebb' szögben vetítik a fénysugarakat a szenzor sarkaiba.",
+                "Digital Lens Optimizer (DLO): Beépített képoptimalizáló szoftverrendszer a kamerában a finomfelbontás javítására.",
+                "DLO Működése: Valós időben, a RAW fájlok feldolgozásakor korrigálja a diffrakciót és a képhibákat."
+            ],
+            "notes": "Természetesen a fizika törvényeit nem lehet teljesen átverni. Amikor a fényt nagyon erősen megtörjük egy lencsében, akkor a kép szélein torzulások, furcsa színes sávok vagy homályos részek (aberrációk) jelenhetnek meg. Az új rendszer lehetővé teszi, hogy a lencséket fizikailag is jobban helyezzék el, így a fénysugarak egyenesebben érik el az érzékelőt. Amit pedig a fizika és az üveg önmagában nem tud tökéletesen megoldani, azt a gép beépített 'okos szoftvere', a Digital Lens Optimizer azonnal, a háttérben kijavítja. Így mi már csak a tökéletes, éles fotót látjuk."
+        },
+        {
+            "is_cover": False,
+            "title": "Az RF Lencsék Exkluzív Funkciói",
+            "bullets": [
+                "Vezérlőgyűrű (Control Ring): A fókuszgyűrű mellett egy új, testreszabható gyűrű az expozíciós beállításokhoz.",
+                "Változtatható fókusz-irány: A kézi élességállítás gyűrűjének forgásiránya szoftveresen megfordítható.",
+                "'Fly-by-wire' fókuszálás: Nincs mechanikus kapcsolat; a fókuszgyűrű csak elektronikus jeleket küld a motornak.",
+                "Szenzorvédelem: Kikapcsoláskor a rekeszlamellák automatikusan bezárulnak, védve a szenzort."
+            ],
+            "notes": "Az új lencsék nemcsak okosabbak, de kényelmesebbek is a kézben. Például mindegyik kapott egy plusz tekerhető gyűrűt a lencse elején (Control Ring). Erre a fotós szabadon ráprogramozhatja a kedvenc beállítását, mondjuk azt, hogy itt állítsa a világosságot. Ráadásul az élességállítás is teljesen modernizálódott: nincs benne nyikorgó mechanikus fogaskerék, a tekerés csak elektronikus jeleket küld egy csendes motornak. Ez sokkal finomabb működést eredményez, ami különösen videózás közben óriási előny, mert nem fognak rángatózni a képkockák."
+        },
+        {
+            "is_cover": False,
+            "title": "Az Induló RF Lencsekínálat (1. Rész)",
+            "bullets": [
+                "RF28-70mm F2 L USM: Szabványos, L-szériás zoomobjektív egyedülálló, állandó f/2.0 fényerővel.",
+                "Méretbeli előny: A nagy bajonett és rövid bázistávolság miatt a frontlencse része kompaktabb maradhatott.",
+                "RF50mm F1.2 L USM: Nagy átmérőjű, standard fix objektív extrém f/1.2 rekeszértékkel.",
+                "Fejlett bevonatok: Air Sphere Coating technológia a becsillanások és szellemkép minimálisra csökkentésére."
+            ],
+            "notes": "Amikor a Canon ezt az új rendszert elindította, kiadott hozzá néhány igazi szuper-lencsét is. Az első, a 28-70mm-es lencse egy technológiai csoda: a régi, szűkebb rendszerben egyszerűen képtelenség lett volna megépíteni úgy, hogy ennyire sok fényt engedjen be. A második, az 50mm-es lencse pedig a portréfotósok nagy álma. Még akkor is borotvaéles képet ad, amikor a lencse teljesen nyitva van a legmélyebb háttérelmosáshoz. Speciális bevonatai pedig szinte nullára csökkentik azt a zavaró becsillanást, amit akkor látunk, ha a nap felé fotózunk."
+        },
+        {
+            "is_cover": False,
+            "title": "Az Induló RF Lencsekínálat (2. Rész)",
+            "bullets": [
+                "RF24-105mm F4 L IS USM: Kompakt f/4-es zoom, integrált képstabilizátorral professzionális feladatokhoz.",
+                "Nano USM meghajtás: Extra vékony, rendkívül gyors és néma ultrahangos fókuszmotor, ideális videózáshoz.",
+                "RF35mm F1.8 MACRO IS STM: Széles látószögű objektív f/1.8 fényerővel és 0.5x makró nagyítással.",
+                "Kompakt felépítés: Léptetőmotor (STM) gondoskodik a finom mozgásról, könnyű kivitelben."
+            ],
+            "notes": "A profik mellett a mindennapi utazókra és videósokra is gondoltak. A 24-105mm-es lencse a tökéletes „mindenes”. Be van építve egy úgynevezett Nano USM motor, ami annyira csendes, hogy hiába állítja az élességet folyamatosan, a videó hangjába egyáltalán nem hallatszik bele. A 35mm-es lencse pedig egy kicsi, könnyű, mindennap hordozható eszköz, ami tökéletes utcai fotózáshoz vagy ahhoz, hogy nagyon közelről fotózzunk apró dolgokat, például egy gyűrűt vagy egy virágot. Nagyon könnyen kezelhetőek egy kezdő számára is."
+        },
+        {
+            "is_cover": False,
+            "title": "Rendszerkompatibilitás: EF Mount Adapterek",
+            "bullets": [
+                "Stratégiai integráció: A hatalmas globális EF/EF-S lencsekínálat maradéktalan átemelése az új rendszerbe.",
+                "Mount Adapter EF-EOS R: Alapmodell a tökéletes fizikai és elektronikus csatlakoztatáshoz.",
+                "Control Ring Adapter: A régebbi EF lencséket is felruházza az új, beépített expozíció-vezérlő gyűrűvel.",
+                "Drop-In Filter Adapter: Professzionális adapter beépített, cserélhető szűrő-nyílással (cirkuláris polár vagy ND)."
+            ],
+            "notes": "Teljesen jogos a félelem a régi felhasználókban: mi lesz azzal a rengeteg drága objektívvel, amit már megvettem az elmúlt években? A jó hír az, hogy a Canon nem hagyja cserben őket. Kiadtak háromféle átalakítót, úgynevezett adaptert. Ezekkel a régi lencséket rácsavarhatjuk az új gépekre, és pont olyan tökéletesen fognak működni, mintha a régi gépen lennének, nincs minőségromlás. Sőt, van olyan adapter is, ami felruházza a régi lencsét a korábban említett új, okos vezérlőgyűrűvel. Vagyis a régi felszerelésünk valójában még jobb és okosabb lesz az új kamerán!"
+        },
+        {
+            "is_cover": False,
+            "title": "Képstabilizáció és Dual Pixel AF",
+            "bullets": [
+                "Interaktív Stabilizáció: A lencse giroszkópja és a szenzor adatai közösen harcolnak a remegés ellen.",
+                "5-Tengelyes videós IS: A lencse optikai és a szenzor elektronikus stabilizációja öttengelyessé egészül ki.",
+                "Dual Pixel fókuszálás: Minden egyes képalkotó szenzorpixelben két fotodióda végzi a fázisérzékelést.",
+                "Kiterjesztett lefedettség: A választható fókuszpontok a kép szélességének 88%-át, magasságának 100%-át lefedik."
+            ],
+            "notes": "Bárki, aki készített már képet este vagy mozgó kocsiból, tudja, milyen bosszantó az elmosódott fotó. Az új rendszerben a remegés ellen egy úgynevezett 5-tengelyes stabilizátor harcol. A kamera teste és a lencse folyamatosan összedolgozik, kiszámolják a kézremegést és kijavítják azt. Ez szinte olyan stabil videókat eredményez, mintha moziállványról filmeznénk. A másik hatalmas ugrás a fókuszálás. A 'Dual Pixel' nevű technológia lényege, hogy a gép villámgyorsan megtalálja az arcot vagy a szemet a kép szinte bármelyik pontján, akár gyertyafényes, sötét szobában is."
+        },
+        {
+            "is_cover": False,
+            "title": "Összegzés: A Jövő Alapköve",
+            "bullets": [
+                "Mérnöki paradigmaváltás: Az RF rendszer az EF hagyatékára építve bontja le a lencsetervezés fizikai korlátait.",
+                "Szinergia: Tökéletesebb hardveres integráció az optika, a mechanika és a digitális jelfeldolgozás között.",
+                "Kész a jövő kihívásaira: Potenciál a folyamatosan növekvő szenzorfelbontáshoz és fényerő-igényekhez.",
+                "Kompakt forma: Jelentős méretcsökkenés anélkül, hogy a strukturális stabilitás vagy a teljesítmény csorbulna."
+            ],
+            "notes": "Összefoglalásként mit is vigyünk magunkkal erről az előadásról? A Canon EOS R rendszere nem csak egy apró szoftverfrissítés vagy egy új gomb a kamerán. Ez egy mérnöki forradalom, ami az alapoktól építette újra a fotózás technológiáját. A korábbi fizikai határokat ledöntve, a Canon ma már képes kisebb, könnyebb gépeket gyártani, miközben a képminőség sosem látott magasságokba emelkedik. Ez a rendszer garantálja, hogy az alkotók az elkövetkező évtizedekben is kompromisszumok nélkül dolgozhassanak. Nagyon köszönöm a megtisztelő figyelmet, ha van kérdésük, állok rendelkezésükre!"
+        }
+    ]
+
+    prs = Presentation()
+    prs.slide_width = Inches(10)
+    prs.slide_height = Inches(7.5)
+
+    for i, slide_data in enumerate(slides_data):
+        if slide_data["is_cover"]:
+            # --- BORÍTÓDIA ---
+            slide_layout = prs.slide_layouts[0] # Title Slide layout
+            slide = prs.slides.add_slide(slide_layout)
+            
+            # Kép a borítóra
+            if i in slide_images:
+                img_path = slide_images[i]
+                # Teljes szélességű sötét téma a kép köré
+                try:
+                    # Kép méretezése és középre helyezése a borítón
+                    pic = slide.shapes.add_picture(img_path, left=Inches(2.5), top=Inches(0.5), width=Inches(5))
+                except Exception as e:
+                    print(f"Hiba a borítóképnél: {e}")
+
+            title_shape = slide.shapes.title
+            title_shape.text = slide_data["title"]
+            title_shape.top = Inches(4.5)
+            
+            subtitle_shape = slide.placeholders[1]
+            subtitle_shape.text = slide_data["subtitle"]
+            subtitle_shape.top = Inches(5.5)
+
+            for paragraph in title_shape.text_frame.paragraphs:
+                for run in paragraph.runs:
+                    run.font.name = 'Arial'
+                    run.font.size = Pt(36)
+                    run.font.bold = True
+            
+            for paragraph in subtitle_shape.text_frame.paragraphs:
+                for run in paragraph.runs:
+                    run.font.name = 'Calibri'
+                    run.font.size = Pt(22)
+            
+            notes_slide = slide.notes_slide
+            notes_slide.notes_text_frame.text = slide_data["notes"]
+            
+        else:
+            # --- TARTALOM DIA ---
+            slide_layout = prs.slide_layouts[1]
+            slide = prs.slides.add_slide(slide_layout)
+
+            title_shape = slide.shapes.title
+            title_shape.text = "" 
+            title_shape.left = Inches(0.5)
+            title_shape.top = Inches(0.4)
+            title_shape.width = Inches(9.0)
+            title_shape.height = Inches(0.8)
+            
+            p_title = title_shape.text_frame.paragraphs[0]
+            run_title = p_title.add_run()
+            run_title.text = slide_data["title"]
+            run_title.font.name = 'Arial'
+            run_title.font.size = Pt(32)
+            run_title.font.bold = True
+
+            body_shape = slide.placeholders[1]
+            body_shape.left = Inches(0.5)
+            body_shape.top = Inches(1.6)
+            body_shape.width = Inches(4.8)
+            body_shape.height = Inches(5.2)
+            
+            tf = body_shape.text_frame
+            tf.clear()
+            tf.word_wrap = True
+            tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+
+            for bullet in slide_data["bullets"]:
+                p = tf.add_paragraph()
+                p.text = bullet
+                p.level = 0
+                p.font.name = 'Calibri'
+                p.font.size = Pt(18)
+                p.space_after = Pt(14) 
+
+            # Kép beillesztése a tartalom diákra
+            if i in slide_images:
+                img_path = slide_images[i]
+                try:
+                    slide.shapes.add_picture(img_path, left=Inches(5.5), top=Inches(1.6), width=Inches(4.0))
+                except Exception as e:
+                    print(f"Hiba a képnél: {e}")
+
+            notes_slide = slide.notes_slide
+            notes_slide.notes_text_frame.text = slide_data["notes"]
+
+    filename = "Canon_EOS_R_Executive_Summary_v3.pptx"
+    prs.save(filename)
+    print(f"\\nA prezentáció sikeresen mentve lett: {filename}")
+
+if __name__ == "__main__":
+    create_presentation()
+"""
+
+with open("generate_canon_presentation_v3.py", "w", encoding="utf-8") as f:
+    f.write(script_content)
+    print("Szkript V3 kész!")
+
+
+```
+
+```text
+Traceback (most recent call last):
+  File "<xbox-string>", line 1, in <module>
+    import fitz  # PyMuPDF
+ModuleNotFoundError: No module named 'fitz'
+
+
+```
+
+```python
+script_content = """import fitz  # PyMuPDF
+import os
+from pptx import Presentation
+from pptx.util import Pt, Inches
+from pptx.enum.text import MSO_AUTO_SIZE
+
+def extract_specific_images(pdf_path):
+    print(f"Képek kinyerése a {pdf_path} fájlból...")
+    if not os.path.exists(pdf_path):
+        raise FileNotFoundError(f"Nem található a fájl: {pdf_path}")
+
+    doc = fitz.open(pdf_path)
+    
+    # ÚJ: A 0. index a Borítókép (1. oldal: fekete kamera kép)
+    slide_to_page_map = {
+        0: 1,   # Cover -> Page 1
+        1: 5,   # Slide 1 -> Page 5
+        2: 4,   # Slide 2 -> Page 4
+        3: 10,  # Slide 3 -> Page 10
+        4: 12,  # Slide 4 -> Page 12
+        5: 14,  # Slide 5 -> Page 14
+        6: 16,  # Slide 6 -> Page 16
+        7: 24,  # Slide 7 -> Page 24
+        8: 34,  # Slide 8 -> Page 34 (Drop-in filter/adapters)
+        9: 35,  # Slide 9 -> Page 35 (IS)
+        10: 41  # Slide 10 -> Page 41 (Flange back)
+    }
+    
+    slide_images = {}
+    
+    for slide_idx, page_num in slide_to_page_map.items():
+        if page_num <= len(doc):
+            page = doc[page_num - 1] # 0-indexed
+            image_list = page.get_images(full=True)
+            
+            if image_list:
+                # Kinyerjük a legnagyobb/fő képet
+                xref = image_list[0][0]
+                base_image = doc.extract_image(xref)
+                image_bytes = base_image["image"]
+                image_ext = base_image["ext"]
+                
+                img_filename = f"slide_{slide_idx}_page_{page_num}.{image_ext}"
+                with open(img_filename, "wb") as f:
+                    f.write(image_bytes)
+                
+                slide_images[slide_idx] = img_filename
+            else:
+                print(f"Dia {slide_idx}: Nem található kép a(z) {page_num}. oldalon.")
+    return slide_images
+
+def create_presentation():
+    pdf_filename = "canon-eos-r-white-paper.pdf"
+    
+    # 1. Képek kinyerése
+    slide_images = extract_specific_images(pdf_filename)
+
+    # 2. Kibővített adatszerkezet (1 Borító + 10 Tartalmi dia)
+    # A diák (bullets) szövege változatlan maradt, az előadói jegyzeteket (notes) teljesen laikusoknak írtam át!
+    slides_data = [
+        {
+            "is_cover": True,
+            "title": "A Canon EOS R Rendszer",
+            "subtitle": "Új Korszak a Képalkotásban\\nExecutive Summary",
+            "notes": "Üdvözlöm Önöket! A mai prezentáció során egy izgalmas technológiai ugrást, a Canon új, EOS R kamerarendszerét fogjuk áttekinteni. Még ha nem is vagyunk mindannyian profi fotósok, látni fogjuk, hogyan oldottak meg a mérnökök egy olyan problémát, amely évtizedek óta gátolta a tökéletesebb képek elkészítését. Vágjunk is bele!"
+        },
+        {
+            "is_cover": False,
+            "title": "A Canon EOS R Rendszer: Új Korszak",
+            "bullets": [
+                "Célkitűzés: Az optikai teljesítmény és a kreatív működési rugalmasság maximalizálása a globális piacon.",
+                "Fókuszterület: Új generációs, full-frame tükör nélküli (mirrorless) technológia bevezetése álló- és mozgóképhez.",
+                "A Rendszer Lényege: Egy teljesen új tervezésű, innovatív RF bajonett (lens mount) architektúra.",
+                "Kompatibilitás: A meglévő EF és EF-S lencsék teljes körű támogatásának integrálása az új ökoszisztémába."
+            ],
+            "notes": "Képzeljék el ezt úgy, mint egy új alapozást egy háznál: a jövőbeli igények, mint a szebb, részletesebb képek és a jobb videók megkövetelték, hogy a Canon a nulláról tervezzen egy új csatlakozást a lencsék és a fényképezőgépek között. Ezt hívjuk RF bajonettnek. Ez a technológia nemcsak a profiknak, hanem mindenkinek szól, miközben a régi, már megvett lencséinket is tovább használhatjuk vele."
+        },
+        {
+            "is_cover": False,
+            "title": "A Harmincéves EF Rendszer Korlátai",
+            "bullets": [
+                "Fizikai gátak: A hagyományos EF bajonett (54 mm átmérő, 44 mm távolság) elérte a lencsetervezési rugalmasság határait.",
+                "Adatátviteli sebesség: A 8-tűs (pin) elektronikus kapcsolat sávszélessége mára már korlátozó tényezővé vált.",
+                "Fejlesztési limitációk: Kevés az elektronikus csatorna az új, összetett operációs funkciók kiszolgálására.",
+                "Fókusz korlátok: Szűkös lehetőségek a modern, szenzor-alapú autofókusz (AF) rendszerek maximalizálásában."
+            ],
+            "notes": "Miért is kellett egyáltalán váltani? A régi, úgynevezett EF rendszer 30 évig szolgált minket. Gondoljanak bele, 30 évvel ezelőtt hol tartottak a számítógépek! Bár hatalmas siker volt, a belső adatátviteli sebessége – mintha csak egy szűk csövön akarnánk sok vizet átnyomni – már nem bírja el a mai modern, szupergyors fókuszálást és a hatalmas felbontású videókat. Új, szélesebb 'csőre' volt szükség az adatoknak."
+        },
+        {
+            "is_cover": False,
+            "title": "Az RF Bajonett Innovációja",
+            "bullets": [
+                "Belső átmérő megőrzése: Az 54 mm-es belső átmérő megtartása az optimális fényáteresztés érdekében.",
+                "Rövidített bázistávolság (Flange Back): A szenzor és a bajonett távolsága 44 mm-ről mindössze 20 mm-re csökkent.",
+                "Növelt sávszélesség: A csatlakozók számának 8-ról 12-re történő emelése biztosítja a nagysebességű kommunikációt.",
+                "Tervezési szabadság: Nagy átmérőjű hátsó lencsetagok helyezhetők közvetlenül a full-frame szenzor elé."
+            ],
+            "notes": "És itt jön a képbe az új találmány! A nyílás átmérője maradt 54 milliméter, hogy továbbra is sok fény jusson be. Viszont a lencse és a képérzékelő közötti távolságot a felére, 20 milliméterre csökkentették. Az érintkezők számát pedig 8-ról 12-re növelték. Ez pontosan olyan, mintha egy kétsávos autópályát négysávosra bővítenénk: a kamera és a lencse most már villámgyorsan, valós időben tud kommunikálni egymással."
+        },
+        {
+            "is_cover": False,
+            "title": "Optikai Aberrációk Kezelése",
+            "bullets": [
+                "Fénytörési kihívások: A fénytörés fokozásával drasztikusan nőnek a kromatikus és monokromatikus képhibák (aberrációk).",
+                "Optikai megoldás: A nagy hátsó lencsék 'kíméletesebb' szögben vetítik a fénysugarakat a szenzor sarkaiba, csökkentve a torzítást.",
+                "Digital Lens Optimizer (DLO): Beépített képoptimalizáló szoftverrendszer a kamerában a finomfelbontás javítására.",
+                "DLO Működése: Valós időben, a RAW fájlok feldolgozásakor korrigálja a diffrakciót és a lencsespecifikus hibákat."
+            ],
+            "notes": "Amikor egy üvegen keresztül nagyon erősen megtörjük a fényt, képhibák keletkezhetnek – például furcsa színes sávok jelennek meg a tárgyak szélein. Az új rendszer viszont megengedi, hogy a nagy lencséket sokkal közelebb tegyék a gép belsejéhez, így a fény lágyabb, kíméletesebb szögben érkezik, és kevésbé torzul a kép. Amit pedig a fizika nem tud megoldani, azt egy beépített okos szoftver, a Digital Lens Optimizer a másodperc töredéke alatt automatikusan kijavítja helyettünk."
+        },
+        {
+            "is_cover": False,
+            "title": "Az RF Lencsék Exkluzív Funkciói",
+            "bullets": [
+                "Vezérlőgyűrű (Control Ring): A fókuszgyűrű mellett egy új, testreszabható gyűrű az expozíciós beállításokhoz (Rekesz, ISO, Zársebesség).",
+                "Változtatható fókusz-irány: A kézi élességállítás gyűrűjének forgásiránya szoftveresen, egyéni preferencia szerint megfordítható.",
+                "'Fly-by-wire' fókuszálás: Nincs mechanikus kapcsolat; a fókuszgyűrű csak finom elektronikus jeleket küld az autófókusz motornak.",
+                "Szenzorvédelem: Kikapcsoláskor a rekeszlamellák automatikusan bezárulnak, védve a szenzort a káros fénysugaraktól."
+            ],
+            "notes": "Ezek az új lencsék nemcsak okosabbak, de sokkal kényelmesebbek is. Kaptak egy extra, tekerhető gyűrűt a gép elején, amire bármilyen funkciót beállíthatunk, mondjuk a fényerő szabályozását. Ráadásul az élességállítás most már teljesen elektronikus. Ez azt jelenti, hogy amikor tekerjük a fókuszgyűrűt, nem kattogó fogaskerekek mozognak odabent, hanem egy néma elektronika finoman és hangtalanul végzi a dolgát – ami videózásnál hatalmas előny."
+        },
+        {
+            "is_cover": False,
+            "title": "Az Induló RF Lencsekínálat (1. Rész)",
+            "bullets": [
+                "RF28-70mm F2 L USM: Szabványos, L-szériás zoomobjektív egyedülálló, állandó f/2.0 fényerővel a teljes tartományban.",
+                "Méretbeli előny: A nagy bajonett és rövid bázistávolság miatt a frontlencse része kompaktabb maradhatott.",
+                "RF50mm F1.2 L USM: Nagy átmérőjű, standard fix objektív extrém f/1.2 rekeszértékkel.",
+                "Fejlett bevonatok: Air Sphere Coating (ASC) technológia a becsillanások és szellemkép minimálisra csökkentésére."
+            ],
+            "notes": "A géphez azonnal bemutattak pár elképesztő lencsét is. Az első egy igazi technológiai csoda, amivel szinte sötétben is remekül lehet fotózni, és a régi rendszerben ekkora méretben egyszerűen képtelenség lett volna megépíteni. A második lencse pedig a portréfotósok álma: már a legnagyobbra nyitott blendénél, azaz a legtöbb beengedett fénynél is hibátlan, tűéles képet ad."
+        },
+        {
+            "is_cover": False,
+            "title": "Az Induló RF Lencsekínálat (2. Rész)",
+            "bullets": [
+                "RF24-105mm F4 L IS USM: Kompakt f/4-es zoom, integrált képstabilizátorral professzionális és 'low-budget' mozgóképes feladatokhoz.",
+                "Nano USM meghajtás: Extra vékony, rendkívül gyors és néma ultrahangos fókuszmotor, ideális videózáshoz.",
+                "RF35mm F1.8 MACRO IS STM: Széles látószögű objektív f/1.8 fényerővel és 0.5x makró nagyítással.",
+                "Kompakt felépítés: Léptetőmotor (STM) gondoskodik a finom mozgásról, könnyű kivitelben."
+            ],
+            "notes": "Gondoltak a mindennapi felhasználókra és a mozgékony videósokra is. A képernyőn látható 24-105-ös lencse egy igazi 'mindenes'. Olyan beépített motorral rendelkezik, ami egyáltalán nem ad ki hangot, így a videókba nem hallatszik bele a kattogás. A mellette lévő 35 milliméteres lencse pedig kicsi, könnyű, remek választás utazáshoz, vagy ha nagyon közelről akarunk lefotózni például egy virágot."
+        },
+        {
+            "is_cover": False,
+            "title": "EF Mount Adapterek",
+            "bullets": [
+                "Stratégiai integráció: A hatalmas globális EF/EF-S lencsekínálat maradéktalan átemelése az EOS R ökoszisztémába.",
+                "Mount Adapter EF-EOS R: Alapmodell a tökéletes fizikai és elektronikus csatlakoztatáshoz, teljesítményveszteség nélkül.",
+                "Control Ring Adapter: A régebbi EF lencséket is felruházza az új, beépített szenzoros expozíció-vezérlő gyűrű funkciójával.",
+                "Drop-In Filter Adapter: Professzionális adapter beépített, cserélhető szűrő-nyílással (cirkuláris polár vagy változtatható ND)."
+            ],
+            "notes": "Biztosan sokakban felmerül a kérdés: mi lesz az otthon lévő, régi, drága objektívekkel? Ki kell dobni őket? Szó sincs róla! A Canon háromféle átalakítót, úgynevezett adaptert is készített, amivel a régi lencséinket zökkenőmentesen és minőségromlás nélkül használhatjuk az új gépen. Sőt, ezekkel az átalakítókkal a régi lencsék még okosabbak is lesznek, mint valaha!"
+        },
+        {
+            "is_cover": False,
+            "title": "Képstabilizáció és Dual Pixel AF",
+            "bullets": [
+                "Interaktív Stabilizáció: A lencse giroszkópja és a szenzor elmozdulás-adatai (DIGIC 8 processzor) közösen harcolnak a remegés ellen.",
+                "5-Tengelyes videós IS: A lencse optikai stabilizációját a szenzor elektronikus stabilizációja öttengelyessé egészíti ki mozgóképnél.",
+                "Dual Pixel fókuszálás: Minden egyes képalkotó szenzorpixelben két fotodióda végzi a villámgyors fázisérzékelést.",
+                "Kiterjesztett fókusz-lefedettség: A manuálisan választható fókuszpontok a kép szélességének 88%-át, magasságának 100%-át lefedik."
+            ],
+            "notes": "A tiszta és éles kép elérésében két fontos dolog segít: a rázkódáscsökkentés és az automata fókusz. Az új rendszerben a gépváz és a lencse folyamatosan kommunikál egymással, és közösen küszöbölik ki a kezünk remegését – mintha láthatatlan állványról filmeznénk! A fókusz pedig szinte a teljes képernyőn, villámgyorsan megtalálja a témát, még akkor is, ha nagyon sötét van."
+        },
+        {
+            "is_cover": False,
+            "title": "Összegzés: A Jövő Alapköve",
+            "bullets": [
+                "Mérnöki paradigmaváltás: Az RF rendszer az EF hagyatékára építve bontja le a lencsetervezés korábbi fizikai korlátait.",
+                "Szinergia a rendszerben: Tökéletesebb hardveres integráció az optika, a mechanika és a nagysebességű digitális jelfeldolgozás között.",
+                "Kész a jövő kihívásaira: Fejlesztési potenciál a folyamatosan növekvő szenzorfelbontáshoz és extenzív fényerő-igényekhez.",
+                "Kompakt forma: Jelentős méretcsökkenés (flange back) anélkül, hogy a strukturális stabilitás vagy az optikai teljesítmény csorbát szenvedne."
+            ],
+            "notes": "Összefoglalva elmondhatjuk: az EOS R rendszer nem egy egyszerű ráncfelvarrás, hanem egy teljesen új, mérnöki alap, ami évtizedekre meghatározza majd a fotózás és videózás jövőjét. A Canon ledöntötte a fizikai korlátokat, hogy kisebb gépeket építhessen sokkal szebb képminőséggel. Ezzel a rendszerrel a Canon felkészült a jövő technológiai kihívásaira. Köszönöm szépen a figyelmüket!"
+        }
+    ]
+
+    prs = Presentation()
+    prs.slide_width = Inches(10)
+    prs.slide_height = Inches(7.5)
+
+    for i, slide_data in enumerate(slides_data):
+        
+        # --- 1. HA BORÍTÓ DIA ---
+        if slide_data["is_cover"]:
+            slide_layout = prs.slide_layouts[6] # Blank layout (üres) a teljes kontrollért
+            slide = prs.slides.add_slide(slide_layout)
+            
+            # Háttérkép beillesztése (ha létezik a 0. indexes kép)
+            if 0 in slide_images:
+                img_path = slide_images[0]
+                try:
+                    # Megpróbáljuk elhelyezni, mint egy nagy, domináns képet
+                    slide.shapes.add_picture(img_path, left=Inches(1.0), top=Inches(2.5), width=Inches(8.0))
+                except Exception as e:
+                    print(f"Hiba a borítókép beillesztésekor: {e}")
+            
+            # Főcím
+            txBox_title = slide.shapes.add_textbox(Inches(1.0), Inches(0.5), Inches(8.0), Inches(1.0))
+            tf_title = txBox_title.text_frame
+            p = tf_title.add_paragraph()
+            p.text = slide_data["title"]
+            p.font.name = 'Arial'
+            p.font.size = Pt(44)
+            p.font.bold = True
+            
+            # Alcím
+            txBox_sub = slide.shapes.add_textbox(Inches(1.0), Inches(1.3), Inches(8.0), Inches(1.0))
+            tf_sub = txBox_sub.text_frame
+            p_sub = tf_sub.add_paragraph()
+            p_sub.text = slide_data["subtitle"]
+            p_sub.font.name = 'Arial'
+            p_sub.font.size = Pt(24)
+            
+            # Előadói jegyzet
+            notes_slide = slide.notes_slide
+            notes_tf = notes_slide.notes_text_frame
+            notes_tf.text = slide_data["notes"]
+            
+            continue # Borító kész, ugrás a következőre
+
+        # --- 2. TARTALMI DIÁK (Is_cover = False) ---
+        slide_layout = prs.slide_layouts[1]
+        slide = prs.slides.add_slide(slide_layout)
+
+        # Cím
+        title_shape = slide.shapes.title
+        title_shape.text = "" 
+        title_shape.left = Inches(0.5)
+        title_shape.top = Inches(0.4)
+        title_shape.width = Inches(9.0)
+        title_shape.height = Inches(0.8)
+        
+        p_title = title_shape.text_frame.paragraphs[0]
+        run_title = p_title.add_run()
+        run_title.text = slide_data["title"]
+        run_title.font.name = 'Arial'
+        run_title.font.size = Pt(32)
+        run_title.font.bold = True
+
+        # Vázlat
+        body_shape = slide.placeholders[1]
+        body_shape.left = Inches(0.5)
+        body_shape.top = Inches(1.6)
+        body_shape.width = Inches(4.8)
+        body_shape.height = Inches(5.2)
+        
+        tf = body_shape.text_frame
+        tf.clear()
+        tf.word_wrap = True
+        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+
+        for bullet in slide_data["bullets"]:
+            p = tf.add_paragraph()
+            p.text = bullet
+            p.level = 0
+            p.font.name = 'Calibri'
+            p.font.size = Pt(18)
+            p.space_after = Pt(14) 
+
+        # Kép a jobb oldalra
+        if i in slide_images:
+            img_path = slide_images[i]
+            try:
+                slide.shapes.add_picture(img_path, left=Inches(5.5), top=Inches(1.6), width=Inches(4.0))
+            except Exception as e:
+                print(f"Hiba a(z) {img_path} beillesztésekor a(z) {i}. dián: {e}")
+
+        # Előadói jegyzet
+        notes_slide = slide.notes_slide
+        notes_tf = notes_slide.notes_text_frame
+        notes_tf.text = slide_data["notes"]
+
+    filename = "Canon_EOS_R_Executive_Summary_v3.pptx"
+    prs.save(filename)
+    print(f"\\nA prezentáció elkészült: {filename}")
+
+if __name__ == "__main__":
+    create_presentation()
+"""
+
+with open("generate_canon_presentation_v3.py", "w", encoding="utf-8") as f:
+    f.write(script_content)
+    print("file written")
+
+
+```
+
+```text
+file written
+
+
+```
+
+Your Python script file is ready
+
+
+Tökéletes kérés, teljesen jogos, hogy egy "Executive Summary" prezentációhoz egy laikusnak is érthető magyarázó szöveg dukál!
+
+Az elkészült új scriptben a következőket módosítottam:
+
+1. **Borítókép (Cover Slide) hozzáadása:** A prezentáció immár **11 diából** áll. A legelső dia egy dedikált borító (Title Slide), amelyre betölti a PDF első oldaláról kivágott fekete kameraképet, kap egy nagy Arial főcímet és egy "Executive Summary" alcímet. A kód ezt egy teljesen üres (`Blank`) elrendezésre építi fel, hogy a pozíciókat kézzel tudjuk kontrollálni.
+2. **Az Előadói Jegyzetek (Speaker Notes) "laikusítása":**
+A diák szövegéhez (a bullet pointokhoz) egyáltalán nem nyúltam, ahogy kérted. Az előadói jegyzeteket viszont átírtam egy **beszélgetős, laikusok számára is teljesen érthető formára**. Például:
+* A "flange back" távolságot és adatátvitelt most autópályák és csövek analógiájával magyarázom.
+* A "fly-by-wire" fókuszálást úgy írom le, hogy eltűntek a kattogó fogaskerekek.
+* Külön kiemeltem az adapterek hasznosságát ("nem kell kidobni a régi lencséket"), stb.
+
+
+3. **Kép-leképezés csúsztatása:** A kód most már tudja, hogy a `0.` index a borító (ahová az 1. oldal képe kerül), a tartalom pedig az `1.` indexű diától indul.
+
+Ugyanúgy futtasd le a mappában, ahol a PDF van, és elkészíti a `Canon_EOS_R_Executive_Summary_v3.pptx` nevű fájlt, ami most már mind tartalmilag, mind formailag tökéletesen alkalmas arra, hogy egy kezdő előadó is profin prezentálhassa!
+
+
+
 
 
 

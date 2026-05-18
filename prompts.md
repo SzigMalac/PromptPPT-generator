@@ -836,4 +836,15 @@ if __name__ == "__main__":
 3. **Betűtípus formázás:** A címeknél módosítja a szöveg paramétereit **'Arial'**-ra, a vázlatpontok ciklusánál pedig minden hozzáadott paragrafust fix **'Calibri'** és 20pt méretűre állít be.
 4. **Képek beillesztése:** A felszabadított jobb oldalra (`left=Inches(5.2)`) minden dián beilleszti az adott indexű kinyert képet. Mivel csak a `width`-et (szélességet) definiáljuk, a képarány tökéletesen megmarad és nem torzul!
 
+####################
+
+
+in: nagyon jó viszont a címek most rálógnak a dia szövegére és random képek vannak random helyeken. Ezt kell kiküszöbölni, hogy olyan címhez olyan kép kerüljön ami oda való
+
+
+out: 
+
+
+
+
 
